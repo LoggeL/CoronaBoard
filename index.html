@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COVID19 Dashboard</title>
+    <link rel="stylesheet" href="css/normalize.min.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+    <nav>
+        <a href='#'>COVID19 Dashboard</a>
+        <a href='https://www.who.int/emergencies/diseases/novel-coronavirus-2019' class="right">WHO</a>
+        <a href='https://www.rki.de/covid-19' class="right">RKI</a>
+        <a href='https://systems.jhu.edu/research/public-health/ncov/' class="right">CSSE</a>
+    </nav>
+    <main>
+        <h1 id="infectedHeader">Currently Infected - log10 scale</h1>
+        <canvas id="infectedMap"></canvas>
+        <div class="colorbar"></div>
+        <div class="colorbar-text">
+            <div class="left">0</div>
+            <div class="right" id="colorbarMaxInfected"></div>
+        </div>
+
+        <div class="section"></div>
+
+        <h1>Historical Infected - log10 scale</h1>
+        <canvas id="infectedHistorical"></canvas>
+
+        <div class="section"></div>
+
+        <h1>Raw Historical Data</h1>
+        <div class="tableContainer">
+            <table id="infectedHistoricalTable">
+            </table>
+        </div>
+
+        <div class="section"></div>
+
+    </main>
+
+    <script src="js/Chart.bundle.js"></script>
+    <script src="js/Chart.Geo.min.js"></script>
+    <link rel="stylesheet" href="css/datatables.css">
+    <script src="js/simple-datatables.min.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
