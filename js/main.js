@@ -107,7 +107,7 @@ fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_cov
         document.getElementById('colorbarMaxInfected').innerText = maxInfected
         document.getElementById('infectedHeader').innerText += ` (${legend[legend.length - 1]})`
 
-        fetch('../data/countries-50m.json').then((r) => r.json()).then((data) => {
+        fetch('data/countries-50m.json').then((r) => r.json()).then((data) => {
             const countries = ChartGeo.topojson.feature(data, data.objects.countries).features
 
             new Chart(document.getElementById("infectedMap").getContext("2d"), {
