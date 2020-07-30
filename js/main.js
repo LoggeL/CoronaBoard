@@ -193,6 +193,37 @@ fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_cov
                             }
                         }
                     });
+
+                    let historicalDataGER = []
+                    const e = covidData.find(e => e[1] == "Germany")
+                    historicalDataGER.push({
+                        label: e[1],
+                        data: e.slice(4),
+                        borderColor: 'red',
+                        fill: false
+                    })
+
+                    console.log(historicalDataGER)
+
+                    new Chart(document.getElementById("infectedHistoricalGER").getContext("2d"), {
+                        type: 'line',
+                        data: {
+                            labels: legend.slice(4),
+                            datasets: historicalDataGER
+                        },
+                        options: {
+                            //legend: true,
+                            scales: {
+                                xAxes: [{
+                                    display: true,
+                                }],
+                                yAxes: [{
+                                    display: true,
+                                    type: 'logarithmic',
+                                }]
+                            }
+                        }
+                    });
                 })
 
                 const covidTableData = covidData.map(e => {
