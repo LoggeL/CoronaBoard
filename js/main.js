@@ -78,165 +78,167 @@ function getRandomColor() {
     }
     return color;
 }
+Promise.all([
+    fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'),
+    fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'),
+    fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv')
+]).then(responses => {
+    Promise.all(
+        responses.map(r => r.text())
+    ).then(([confirmedCSV, recoveredCSV, deadCSV]) => {
 
-fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv').then(response =>
-    response.text().then(csv => {
-        fetch('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv').then(resp =>
-            resp.text().then(recoveredCSV => {
+        covidData = parseCSV(confirmedCSV)
+        curedData = parseCSV(recoveredCSV)
+        deadData = parseCSV(deadCSV)
+
+        legend = covidData.shift()
+
+        for (let countryIndex = 0; countryIndex < covidData.length; countryIndex++) {
+            curedDataForCountry = curedData.find(c => c[0] == covidData[countryIndex][0] && c[1] == covidData[countryIndex][1])
+            deadDataForCountry = deadData.find(c => c[0] == covidData[countryIndex][0] && c[1] == covidData[countryIndex][1])
+
+            console.log(countryIndex, covidData[countryIndex])
+            for (let dataIndex = 4; dataIndex < covidData[countryIndex].length; dataIndex++) {
+                covidData[countryIndex][dataIndex] = covidData[countryIndex][dataIndex] - (curedDataForCountry ? curedDataForCountry[dataIndex] : 0) - (deadDataForCountry ? deadDataForCountry[dataIndex] : 0)
+            }
+        }
+        console.log(covidData)
+
+        covidData = covidData.sort((a, b) => b[a.length - 1] - a[b.length - 1])
+        covidData.forEach(e => covidObj[e[1]] = Number(covidObj[e[1]] || 0) + Number(e[e.length - 1]))
+
+        // Fix names
+        covidObj['United States of America'] = covidObj['US']
+        delete covidObj['US']
+        const greenland = covidData.find(e => e[0] == "Greenland")
+        covidObj['Greenland'] = greenland[greenland.length - 1]
+        covidObj['Denmark'] = covidObj['Denmark'] - covidObj['Greenland']
+
+        exchangeName('Korea, South', 'South Korea')
+        exchangeName('Congo (Brazzaville)', 'Congo')
+        exchangeName('Congo (Kinshasa)', 'Dem. Rep. Congo')
+        exchangeName('Cote d\'Ivoire', 'Côte d\'Ivoire')
+        exchangeName('Bosnia and Herzegovina', 'Bosnia and Herz.')
+        exchangeName('Taiwan*', 'Taiwan')
+        exchangeName('Dominican Republic', 'Dominican Rep.')
 
 
+        const maxInfected = covidData.map(e => e.slice(-1)[0]).max()
+        document.getElementById('colorbarMaxInfected').innerText = maxInfected
+        document.getElementById('infectedHeader').innerText += ` (${legend[legend.length - 1]})`
 
-                covidData = parseCSV(csv)
-                curedData = parseCSV(recoveredCSV)
+        fetch('data/countries-50m.json').then((r) => r.json()).then((data) => {
+            const countries = ChartGeo.topojson.feature(data, data.objects.countries).features
 
-                legend = covidData.shift()
-
-                for (let countryIndex = 0; countryIndex < covidData.length; countryIndex++) {
-                    curedDataForCountry = curedData.find(c => c[0] == covidData[countryIndex][0] && c[1] == covidData[countryIndex][1])
-                    console.log(countryIndex, covidData[countryIndex])
-                    for (let dataIndex = 4; dataIndex < covidData[countryIndex].length; dataIndex++) {
-                        covidData[countryIndex][dataIndex] = covidData[countryIndex][dataIndex] - (curedDataForCountry ? curedDataForCountry[dataIndex] : 0)
+            new Chart(document.getElementById("infectedMap").getContext("2d"), {
+                type: 'choropleth',
+                data: {
+                    labels: countries.map((d) => (d.properties.name + ' ' + (covidObj[d.properties.name] || "| No data")).replace(/\B(?=(\d{3})+(?!\d))/g, " ")),
+                    datasets: [{
+                        label: 'Countries',
+                        backgroundColor: (context) => {
+                            if (context.dataIndex == null) {
+                                return null;
+                            }
+                            const value = context.dataset.data[context.dataIndex];
+                            const colorScale = 255 - Math.round(Math.log10(value.value) / Math.log10(maxInfected) * 255)
+                            return `rgb(255, ${colorScale}, ${colorScale})`
+                            // 255, 0, 0 || 255, 255, 255
+                        },
+                        data: countries.map((d) => {
+                            return {
+                                feature: d,
+                                value: covidObj[d.properties.name] || 0
+                            }
+                        }),
+                    }]
+                },
+                options: {
+                    showOutline: true,
+                    showGraticule: true,
+                    legend: {
+                        display: false
+                    },
+                    scale: {
+                        projection: 'equalEarth'
                     }
                 }
-                console.log(covidData)
-
-                covidData = covidData.sort((a, b) => b[a.length - 1] - a[b.length - 1])
-                covidData.forEach(e => covidObj[e[1]] = Number(covidObj[e[1]] || 0) + Number(e[e.length - 1]))
-
-                // Fix names
-                covidObj['United States of America'] = covidObj['US']
-                delete covidObj['US']
-                const greenland = covidData.find(e => e[0] == "Greenland")
-                covidObj['Greenland'] = greenland[greenland.length - 1]
-                covidObj['Denmark'] = covidObj['Denmark'] - covidObj['Greenland']
-
-                exchangeName('Korea, South', 'South Korea')
-                exchangeName('Congo (Brazzaville)', 'Congo')
-                exchangeName('Congo (Kinshasa)', 'Dem. Rep. Congo')
-                exchangeName('Cote d\'Ivoire', 'Côte d\'Ivoire')
-                exchangeName('Bosnia and Herzegovina', 'Bosnia and Herz.')
-                exchangeName('Taiwan*', 'Taiwan')
-                exchangeName('Dominican Republic', 'Dominican Rep.')
-
-
-                const maxInfected = covidData.map(e => e.slice(-1)[0]).max()
-                document.getElementById('colorbarMaxInfected').innerText = maxInfected
-                document.getElementById('infectedHeader').innerText += ` (${legend[legend.length - 1]})`
-
-                fetch('data/countries-50m.json').then((r) => r.json()).then((data) => {
-                    const countries = ChartGeo.topojson.feature(data, data.objects.countries).features
-
-                    new Chart(document.getElementById("infectedMap").getContext("2d"), {
-                        type: 'choropleth',
-                        data: {
-                            labels: countries.map((d) => (d.properties.name + ' ' + (covidObj[d.properties.name] || "| No data")).replace(/\B(?=(\d{3})+(?!\d))/g, " ")),
-                            datasets: [{
-                                label: 'Countries',
-                                backgroundColor: (context) => {
-                                    if (context.dataIndex == null) {
-                                        return null;
-                                    }
-                                    const value = context.dataset.data[context.dataIndex];
-                                    const colorScale = 255 - Math.round(Math.log10(value.value) / Math.log10(maxInfected) * 255)
-                                    return `rgb(255, ${colorScale}, ${colorScale})`
-                                    // 255, 0, 0 || 255, 255, 255
-                                },
-                                data: countries.map((d) => {
-                                    return {
-                                        feature: d,
-                                        value: covidObj[d.properties.name] || 0
-                                    }
-                                }),
-                            }]
-                        },
-                        options: {
-                            showOutline: true,
-                            showGraticule: true,
-                            legend: {
-                                display: false
-                            },
-                            scale: {
-                                projection: 'equalEarth'
-                            }
-                        }
-                    })
-
-                    let historicalData = []
-                    for (let i = 0; i < 5; i++) {
-                        const e = covidData[i]
-                        historicalData.push({
-                            label: e[1],
-                            data: e.slice(4),
-                            borderColor: getRandomColor(),
-                            fill: false
-                        })
-                    }
-
-                    console.log(historicalData)
-
-                    new Chart(document.getElementById("infectedHistorical").getContext("2d"), {
-                        type: 'line',
-                        data: {
-                            labels: legend.slice(4),
-                            datasets: historicalData
-                        },
-                        options: {
-                            //legend: true,
-                            scales: {
-                                xAxes: [{
-                                    display: true,
-                                }],
-                                yAxes: [{
-                                    display: true,
-                                    type: 'logarithmic',
-                                }]
-                            }
-                        }
-                    });
-
-                    let historicalDataGER = []
-                    const e = covidData.find(e => e[1] == "Germany")
-                    historicalDataGER.push({
-                        label: e[1],
-                        data: e.slice(4),
-                        borderColor: 'red',
-                        fill: false
-                    })
-
-                    console.log(historicalDataGER)
-
-                    new Chart(document.getElementById("infectedHistoricalGER").getContext("2d"), {
-                        type: 'line',
-                        data: {
-                            labels: legend.slice(4),
-                            datasets: historicalDataGER
-                        },
-                        options: {
-                            //legend: true,
-                            scales: {
-                                xAxes: [{
-                                    display: true,
-                                }],
-                                yAxes: [{
-                                    display: true,
-                                    type: 'logarithmic',
-                                }]
-                            }
-                        }
-                    });
-                })
-
-                const covidTableData = covidData.map(e => {
-                    [province, state, lat, lon, ...cases] = e
-                    return [province, state, ...cases.reverse()]
-                });
-                [province, state, lat, lon, ...cases] = legend
-                const tableData = {
-                    headings: [province, state, ...cases.reverse()],
-                    data: covidTableData
-                }
-                new simpleDatatables.DataTable(document.getElementById('infectedHistoricalTable'), { data: tableData, fixedHeight: true })
             })
-        )
+
+            let historicalData = []
+            for (let i = 0; i < 5; i++) {
+                const e = covidData[i]
+                historicalData.push({
+                    label: e[1],
+                    data: e.slice(4),
+                    borderColor: getRandomColor(),
+                    fill: false
+                })
+            }
+
+            console.log(historicalData)
+
+            new Chart(document.getElementById("infectedHistorical").getContext("2d"), {
+                type: 'line',
+                data: {
+                    labels: legend.slice(4),
+                    datasets: historicalData
+                },
+                options: {
+                    //legend: true,
+                    scales: {
+                        xAxes: [{
+                            display: true,
+                        }],
+                        yAxes: [{
+                            display: true,
+                            type: 'logarithmic',
+                        }]
+                    }
+                }
+            });
+
+            let historicalDataGER = []
+            const e = covidData.find(e => e[1] == "Germany")
+            historicalDataGER.push({
+                label: e[1],
+                data: e.slice(4),
+                borderColor: 'red',
+                fill: false
+            })
+
+            console.log(historicalDataGER)
+
+            new Chart(document.getElementById("infectedHistoricalGER").getContext("2d"), {
+                type: 'line',
+                data: {
+                    labels: legend.slice(4),
+                    datasets: historicalDataGER
+                },
+                options: {
+                    //legend: true,
+                    scales: {
+                        xAxes: [{
+                            display: true,
+                        }],
+                        yAxes: [{
+                            display: true,
+                            type: 'logarithmic',
+                        }]
+                    }
+                }
+            });
+        })
+
+        const covidTableData = covidData.map(e => {
+            [province, state, lat, lon, ...cases] = e
+            return [province, state, ...cases.reverse()]
+        });
+        [province, state, lat, lon, ...cases] = legend
+        const tableData = {
+            headings: [province, state, ...cases.reverse()],
+            data: covidTableData
+        }
+        new simpleDatatables.DataTable(document.getElementById('infectedHistoricalTable'), { data: tableData, fixedHeight: true })
     })
-)
+})
